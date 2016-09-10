@@ -6,14 +6,14 @@ OTA_BOOTLOADER_PATH = ../esp-bootloader/firmware/espboot.bin
 THISDIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # Base directory for the compiler. Needs a / at the end; if not set it'll use the tools that are in
 # the PATH.
-XTENSA_TOOLS_ROOT ?=
+XTENSA_TOOLS_ROOT ?= /opt/esp-open-sdk/xtensa-lx106-elf/bin/
 
 # base directory of the ESP8266 SDK package, absolute
-SDK_BASE	?= /tools/esp8266/sdk/ESP8266_NONOS_SDK
+SDK_BASE	?= /opt/esp-open-sdk/ESP8266_NONOS_SDK_V1.5.4_16_05_20
 
 #Esptool.py path and port
-ESPTOOL		?= /tools/esp8266/esptool/esptool.py
-ESPPORT		?= /dev/tty.SLAB_USBtoUART
+ESPTOOL		?= esptool.py
+ESPPORT		?= /dev/ttyUSB0
 #ESPPORT		?= /dev/tty.wchusbserial1410
 #ESPDELAY indicates seconds to wait between flashing the two binary images
 ESPDELAY	?= 3
@@ -29,9 +29,9 @@ ESP_SIZE = 32m
 
 
 VERBOSE = yes
-FLAVOR = debug
+FLAVOR = release
 # name for the target project
-TARGET		?= esp_mqtt
+TARGET		?= iot-esp
 
 # which modules (subdirectories) of the project to include in compiling
 USER_MODULES		= user driver mqtt modules
@@ -52,7 +52,7 @@ FIRMWARE_BASE		= firmware
 
 # Opensdk patches stdint.h when compiled with an internal SDK. If you run into compile problems pertaining to
 # redefinition of int types, try setting this to 'yes'.
-USE_OPENSDK ?= no
+USE_OPENSDK ?= yes
 
 DATETIME := $(shell date "+%Y-%b-%d_%H:%M:%S_%Z")
 
@@ -161,7 +161,7 @@ else
 	OUTPUT := $(addprefix $(FIRMWARE_BASE)/,$(TARGET))
 	ESPTOOL_WRITE = write_flash --flash_freq $(ESP_FREQ) --flash_mode $(ESP_MODE) --flash_size $(ESP_SIZE) \
 									0x00000 $(OUTPUT)0x00000.bin \
-									0x10000 $(OUTPUT)0x10000.bin \
+									0x10000 $(OUTPUT)0x40000.bin \
 									$(ESP_INIT_DATA_DEFAULT_ADDR) $(SDK_BASE)/bin/esp_init_data_default.bin
 
 	ESPTOOL_FLASHDEF=
