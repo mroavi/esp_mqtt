@@ -53,6 +53,7 @@ static void ICACHE_FLASH_ATTR wifi_check_ip(void *arg)
     os_timer_setfn(&WiFiLinker, (os_timer_func_t *)wifi_check_ip, NULL);
     os_timer_arm(&WiFiLinker, 500, 0);
   }
+
   if (wifiStatus != lastWifiStatus) {
     lastWifiStatus = wifiStatus;
     if (wifiCb)
@@ -73,7 +74,7 @@ void ICACHE_FLASH_ATTR WIFI_Connect(uint8_t* ssid, uint8_t* pass, WifiCallback c
   wifi_station_set_config_current(&stationConf);
   os_timer_disarm(&WiFiLinker);
   os_timer_setfn(&WiFiLinker, (os_timer_func_t *)wifi_check_ip, NULL);
-  os_timer_arm(&WiFiLinker, 1000, 0);
+  os_timer_arm(&WiFiLinker, 5000, 0);
   wifi_station_connect();
 }
 

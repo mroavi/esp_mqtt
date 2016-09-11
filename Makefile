@@ -9,7 +9,7 @@ THISDIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 XTENSA_TOOLS_ROOT ?= /opt/esp-open-sdk/xtensa-lx106-elf/bin/
 
 # base directory of the ESP8266 SDK package, absolute
-SDK_BASE	?= /opt/esp-open-sdk/ESP8266_NONOS_SDK_V1.5.4_16_05_20
+SDK_BASE	?= /opt/esp-open-sdk/ESP8266_NONOS_SDK
 
 #Esptool.py path and port
 ESPTOOL		?= esptool.py
@@ -25,11 +25,11 @@ ESP_FREQ = 40m
 # qio qout dio dout
 ESP_MODE = dio
 #4m 2m 8m 16m 32m
-ESP_SIZE = 32m
+ESP_SIZE = 4m
 
 
 VERBOSE = yes
-FLAVOR = release
+FLAVOR = debug
 # name for the target project
 TARGET		?= iot-esp
 
@@ -161,7 +161,7 @@ else
 	OUTPUT := $(addprefix $(FIRMWARE_BASE)/,$(TARGET))
 	ESPTOOL_WRITE = write_flash --flash_freq $(ESP_FREQ) --flash_mode $(ESP_MODE) --flash_size $(ESP_SIZE) \
 									0x00000 $(OUTPUT)0x00000.bin \
-									0x10000 $(OUTPUT)0x40000.bin \
+									0x10000 $(OUTPUT)0x10000.bin \
 									$(ESP_INIT_DATA_DEFAULT_ADDR) $(SDK_BASE)/bin/esp_init_data_default.bin
 
 	ESPTOOL_FLASHDEF=

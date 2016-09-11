@@ -27,6 +27,18 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+ * TROUBLESHOOTING:
+ *
+ * ERROR: '.irom0.text' will not fit in region `irom0_0_seg'
+ * http://bbs.espressif.com/viewtopic.php?f=7&t=1339
+ * Howdy, have you tried modifying the eagle.app.v6.ld linker control configuration
+ * file and lowering the start location of irom0_0_seg and increasing its length.
+ * The default on an Espressif SDK system is only 245,000 bytes out of the possible 512,000.
+ * How much flash does your ESP8266 actually have? What are your current values of irom0_0seg origin and length?
+ */
+
 #include "ets_sys.h"
 #include "driver/uart.h"
 #include "osapi.h"
@@ -36,6 +48,14 @@
 #include "gpio.h"
 #include "user_interface.h"
 #include "mem.h"
+#include "ir_receiver.h"
+
+static void ICACHE_FLASH_ATTR irCommandCb( uint32_t irCmd)
+{
+	/* print the received IR cmd */
+//	os_printf("\r\nIR CMD: %x", irCmd);
+	return;
+}
 
 MQTT_Client mqttClient;
 static void ICACHE_FLASH_ATTR wifiConnectCb(uint8_t status)
@@ -105,12 +125,13 @@ void ICACHE_FLASH_ATTR print_info()
 static void ICACHE_FLASH_ATTR app_init(void)
 {
   uart_init(BIT_RATE_115200, BIT_RATE_115200);
-  print_info();
-  MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
-  //MQTT_InitConnection(&mqttClient, "192.168.11.122", 1880, 0);
 
+  print_info();
+
+  ir_receiver_init( irCommandCb );
+
+  MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
   MQTT_InitClient(&mqttClient, MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS, MQTT_KEEPALIVE, MQTT_CLEAN_SESSION);
-  //MQTT_InitClient(&mqttClient, "client_id", "user", "pass", 120, 1);
   MQTT_InitLWT(&mqttClient, "/lwt", "offline", 0, 0);
   MQTT_OnConnected(&mqttClient, mqttConnectedCb);
   MQTT_OnDisconnected(&mqttClient, mqttDisconnectedCb);
