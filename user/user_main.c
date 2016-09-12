@@ -53,7 +53,7 @@
 static void ICACHE_FLASH_ATTR irCommandCb( uint32_t irCmd)
 {
 	/* print the received IR cmd */
-//	os_printf("\r\nIR CMD: %x", irCmd);
+	INFO("\r\nIR CMD: %x", irCmd);
 	return;
 }
 
