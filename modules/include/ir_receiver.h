@@ -41,10 +41,10 @@ typedef void (*call_me_on_gpio_edge_interrupt)(void * arg);
 int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_code ) );
 
 /**
- * User must call this function on every GPIO
- * edge interrupt.
+ * User must call this function on every rising or falling
+ * edge of the GPIO connected to the IR receiver.
  *
- * @return Function pointer
+ * @return Function address
  */
 call_me_on_gpio_edge_interrupt get_function_pointer( void );
 
