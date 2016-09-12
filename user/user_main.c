@@ -29,6 +29,11 @@
 */
 
 /*
+ * NEC commands: https://arduino-info.wikispaces.com/IR-RemoteControl
+ *
+ */
+
+/*
  * TROUBLESHOOTING:
  *
  * ERROR: '.irom0.text' will not fit in region `irom0_0_seg'
@@ -50,107 +55,29 @@
 #include "mem.h"
 #include "ir_receiver.h"
 
-static void ICACHE_FLASH_ATTR buttonPressedCb(button_t pressedButton, bool reapetedCode)
+MQTT_Client mqttClient;
+
+static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool reapetedCode)
 {
-	switch( pressedButton )
-	{
-	case CH_MIN:
-		INFO("CH-\r\n");
-		break;
+	char topic[] = MQTT_CLIENT_ID"/ir_commands";
 
-	case CH:
-		INFO("CH\r\n");
-		break;
+	int pressedButtonLen = strlen(pressedButton);
 
-	case CH_PLUS:
-		INFO("CH+\r\n");
-		break;
+	INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", topic, pressedButton, pressedButtonLen );
 
-	case PREV:
-		INFO("PREV\r\n");
-		break;
-
-	case NEXT:
-		INFO("NEXT\r\n");
-		break;
-
-	case PLAY_PAUSE:
-		INFO("PLAY/PAUSE\r\n");
-		break;
-
-	case VOL_MIN:
-		INFO("VOL-\r\n");
-		break;
-
-	case VOL_PLUS:
-		INFO("VOL+\r\n");
-		break;
-
-	case EQ:
-		INFO("EQ\r\n");
-		break;
-
-	case NUM_0:
-		INFO("0\r\n");
-		break;
-
-	case NUM_100_PLUS:
-		INFO("100+\r\n");
-		break;
-
-	case NUM_200_PLUS:
-		INFO("200+\r\n");
-		break;
-
-	case NUM_1:
-		INFO("1\r\n");
-		break;
-
-	case NUM_2:
-		INFO("2\r\n");
-		break;
-
-	case NUM_3:
-		INFO("3\r\n");
-		break;
-
-	case NUM_4:
-		INFO("4\r\n");
-		break;
-
-	case NUM_5:
-		INFO("5\r\n");
-		break;
-
-	case NUM_6:
-		INFO("6\r\n");
-		break;
-
-	case NUM_7:
-		INFO("7\r\n");
-		break;
-
-	case NUM_8:
-		INFO("8\r\n");
-		break;
-
-	case NUM_9:
-		INFO("9\r\n");
-		break;
-
-	default:
-		INFO("Other button\r\n");
-	}
+	MQTT_Publish(&mqttClient, topic, pressedButton, pressedButtonLen, 1, 0);
 
 	return;
 }
 
-MQTT_Client mqttClient;
 static void ICACHE_FLASH_ATTR wifiConnectCb(uint8_t status)
 {
-  if (status == STATION_GOT_IP) {
+  if (status == STATION_GOT_IP)
+  {
     MQTT_Connect(&mqttClient);
-  } else {
+  }
+  else
+  {
     MQTT_Disconnect(&mqttClient);
   }
 }
@@ -159,13 +86,13 @@ static void ICACHE_FLASH_ATTR mqttConnectedCb(uint32_t *args)
 {
   MQTT_Client* client = (MQTT_Client*)args;
   INFO("MQTT: Connected\r\n");
-  MQTT_Subscribe(client, "/mqtt/topic/0", 0);
-  MQTT_Subscribe(client, "/mqtt/topic/1", 1);
-  MQTT_Subscribe(client, "/mqtt/topic/2", 2);
-
-  MQTT_Publish(client, "/mqtt/topic/0", "hello0", 6, 0, 0);
-  MQTT_Publish(client, "/mqtt/topic/1", "hello1", 6, 1, 0);
-  MQTT_Publish(client, "/mqtt/topic/2", "hello2", 6, 2, 0);
+//  MQTT_Subscribe(client, "/mqtt/topic/0", 0);
+//  MQTT_Subscribe(client, "/mqtt/topic/1", 1);
+//  MQTT_Subscribe(client, "/mqtt/topic/2", 2);
+//
+//  MQTT_Publish(client, "/mqtt/topic/0", "hello0", 6, 0, 0);
+//  MQTT_Publish(client, "/mqtt/topic/1", "hello1", 6, 1, 0);
+//  MQTT_Publish(client, "/mqtt/topic/2", "hello2", 6, 2, 0);
 
 }
 

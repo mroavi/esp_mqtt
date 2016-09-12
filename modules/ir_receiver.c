@@ -8,14 +8,14 @@
 #include "gpio.h"
 #include "osapi.h"
 
-void (*callback)( button_t pressed_button, bool repeated_code );
+void (*callback)( const char * pressed_button, bool repeated_code );
 
-static void 	hwTimerCallback( void );
-static void 	gpioCallback(void *arg);
+static void 		hwTimerCallback( void );
+static void 		gpioCallback(void *arg);
 
-static void 	getIrRawMessageBits( void );
-static uint32_t getIrHexCommand( void );
-static button_t getPressedButton( uint32_t hex );
+static void 		getIrRawMessageBits( void );
+static uint32_t 	getHexButtonCommand( void );
+static const char * getPressedButtonName( uint32_t hex );
 
 /* ====================================== */
 /* HARDWARE TIMER                         */
@@ -144,10 +144,10 @@ static void gpioCallback(void *arg)
 static void hwTimerCallback( void )
 {
 	/* this variable will contain the decoded IR command */
-	static uint32 	irCmd = 0;
+	uint32 	irCmd = 0;
 
 	/* this variable will contain the button pressed */
-	static button_t pressed_button;
+	const char * pressedButton;
 
 	/* stop the HW TIMER */
 	RTC_REG_WRITE(FRC1_CTRL_ADDRESS, DIVDED_BY_16 | TM_EDGE_INT);
@@ -166,14 +166,14 @@ static void hwTimerCallback( void )
 	getIrRawMessageBits();
 
 	/* Decode NEC message frame (every message frame contains 32 coded bits) */
-	irCmd = getIrHexCommand();
+	irCmd = getHexButtonCommand();
+
+	pressedButton = getPressedButtonName( irCmd );
 
 	/* reset index */
 	edgeIndex = 0;
 
-	pressed_button = getPressedButton( irCmd );
-
-	callback( pressed_button, false ); // TODO: implement repeated code functionality
+	callback( pressedButton, false ); // TODO: implement repeated code functionality
 
 	return;
 }
@@ -229,7 +229,7 @@ static void getIrRawMessageBits( void )
 }
 
 
-static uint32_t getIrHexCommand( void )
+static uint32_t getHexButtonCommand( void )
 {
 	int i, j;
 	bool repeatCode = false;
@@ -303,98 +303,99 @@ static uint32_t getIrHexCommand( void )
 }
 
 
-static button_t getPressedButton( uint32_t hex ) {
+static const char * getPressedButtonName( uint32_t hex ) {
 
-	button_t pressedButton;
+	const char * pressedButton;
 
 	switch( hex )
 	{
 	case 0xFFA25D:
-		pressedButton = CH_MIN;
+		pressedButton = button[0];
 		break;
 
 	case 0xFF629D:
-		pressedButton = CH;
+		pressedButton = button[1];
 		break;
 
 	case 0xFFE21D:
-		pressedButton = CH_PLUS;
+		pressedButton = button[2];
 		break;
 
 	case 0xFF22DD:
-		pressedButton = PREV;
+		pressedButton = button[3];
 		break;
 
 	case 0xFF02FD:
-		pressedButton = NEXT;
+		pressedButton = button[4];
 		break;
 
 	case 0xFFC23D:
-		pressedButton = PLAY_PAUSE;
+		pressedButton = button[5];
 		break;
 
 	case 0xFFE01F:
-		pressedButton = VOL_MIN;
+		pressedButton = button[6];
 		break;
 
 	case 0xFFA857:
-		pressedButton = VOL_PLUS;
+		pressedButton = button[7];
 		break;
 
 	case 0xFF906F:
-		pressedButton = EQ;
+		pressedButton = button[8];
 		break;
 
 	case 0xFF6897:
-		pressedButton = NUM_0;
+		pressedButton = button[9];
 		break;
 
 	case 0xFF9867:
-		pressedButton = NUM_100_PLUS;
+		pressedButton = button[10];
 		break;
 
 	case 0xFFB04F:
-		pressedButton = NUM_200_PLUS;
+		pressedButton = button[11];
 		break;
 
 	case 0xFF30CF:
-		pressedButton = NUM_1;
+		pressedButton = button[12];
 		break;
 
 	case 0xFF18E7:
-		pressedButton = NUM_2;
+		pressedButton = button[13];
 		break;
 
 	case 0xFF7A85:
-		pressedButton = NUM_3;
+		pressedButton = button[14];
 		break;
 
 	case 0xFF10EF:
-		pressedButton = NUM_4;
+		pressedButton = button[15];
 		break;
 
 	case 0xFF38C7:
-		pressedButton = NUM_5;
+		pressedButton = button[16];
 		break;
 
 	case 0xFF5AA5:
-		pressedButton = NUM_6;
+		pressedButton = button[17];
 		break;
 
 	case 0xFF42BD:
-		pressedButton = NUM_7;
+		pressedButton = button[18];
 		break;
 
 	case 0xFF4AB5:
-		pressedButton = NUM_8;
+		pressedButton = button[19];
 		break;
 
 	case 0xFF52AD:
-		pressedButton = NUM_9;
+		pressedButton = button[20];
 		break;
 
 	default:
-		pressedButton = OTHER;
+		pressedButton = button[21];
+		break;
 	}
 
 	return pressedButton;
@@ -402,7 +403,7 @@ static button_t getPressedButton( uint32_t hex ) {
 
 
 
-int ir_receiver_init( void (*cb)( button_t pressed_button, bool repeated_code ) )
+int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_code ) )
 {
 	/* Register the callback */
 	callback = cb;
