@@ -1,6 +1,8 @@
 /*
  * Uses the NEC Infrared Transmission Protocol to receive IR commands:
  *   http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
+ *
+ * NEC commands: https://arduino-info.wikispaces.com/IR-RemoteControl
  */
 
 #include "ir_receiver.h"
@@ -11,7 +13,7 @@
 void (*callback)( const char * pressed_button, bool repeated_code );
 
 static void 		hwTimerCallback( void );
-static void 		gpioCallback(void *arg);
+static void 		gpioEdgeTrigger(void *arg);
 
 static void 		getIrRawMessageBits( void );
 static uint32_t 	getHexButtonCommand( void );
@@ -69,61 +71,51 @@ static uint32 ticksToUs( uint32_t ticks )
 /* GPIO INTERRPUT                         */
 /* ====================================== */
 
-static void gpioCallback(void *arg)
+static void gpioEdgeTrigger(void *arg)
 {
 	uint16 			gpio_status = 0;
 	static uint32	currTicks = 0;
 	static uint32	prevTicks = 0;
 
-	/* get the GPIO interrupt status */
-	gpio_status = GPIO_REG_READ( GPIO_STATUS_ADDRESS );
-
-	/* clear the interrupt */
-	GPIO_REG_WRITE( GPIO_STATUS_W1TC_ADDRESS, gpio_status);
-
-	/* did GPIO 12 (connected to IR receiver) generate the ISR? */
-	if( gpio_status == BIT(12) )
+	/* Is this the first edge of the IR message frame? */
+	if ( edgeIndex == 0 )
 	{
-		/* yes, and is it the first edge of the IR message frame? */
-		if ( edgeIndex == 0 )
-		{
-			/* yes, then store counter value */
-			prevTicks = RTC_REG_READ(FRC1_COUNT_ADDRESS);
+		/* yes, then store counter value */
+		prevTicks = RTC_REG_READ(FRC1_COUNT_ADDRESS);
 
-			/* and start the HW TIMER */
-			RTC_REG_WRITE(FRC1_CTRL_ADDRESS,
-					DIVDED_BY_16 | FRC1_ENABLE_TIMER | TM_EDGE_INT);
+		/* and start the HW TIMER */
+		RTC_REG_WRITE(FRC1_CTRL_ADDRESS,
+				DIVDED_BY_16 | FRC1_ENABLE_TIMER | TM_EDGE_INT);
 
-			/* reset relevant variables */
-			minInterval = 0xFFFFFFFF; // initialize to a very big number
-			rawIrMsgLen = 0;
+		/* reset relevant variables */
+		minInterval = 0xFFFFFFFF; // initialize to a very big number
+		rawIrMsgLen = 0;
 
 #if 0
-			os_printf("\n\nBeginning of IR message frame detected\r\n");
+		os_printf("\n\nBeginning of IR message frame detected\r\n");
 #endif
 
 #if 0
-			// Set GPIO0 to HIGH
-			gpio_output_set( BIT0, 0, BIT0, 0 );
+		// Set GPIO0 to HIGH
+		gpio_output_set( BIT0, 0, BIT0, 0 );
 #endif
-		}
-		else
-		{
-			/* record time of current edge */
-			currTicks = RTC_REG_READ( FRC1_COUNT_ADDRESS );
-
-			/* record time interval between current edge and previous edge */
-			intervalArr[ edgeIndex - 1 ] = ticksToUs( prevTicks - currTicks );
-
-			/* keep track the shortest interval */
-			minInterval = ( intervalArr[ edgeIndex - 1 ] < minInterval ) ? intervalArr[ edgeIndex - 1 ] : minInterval;
-
-			/* save time of current edge */
-			prevTicks = currTicks;
-		}
-
-		edgeIndex++;
 	}
+	else
+	{
+		/* no, then record time of current edge */
+		currTicks = RTC_REG_READ( FRC1_COUNT_ADDRESS );
+
+		/* record time interval between current edge and previous edge */
+		intervalArr[ edgeIndex - 1 ] = ticksToUs( prevTicks - currTicks );
+
+		/* keep track the shortest interval */
+		minInterval = ( intervalArr[ edgeIndex - 1 ] < minInterval ) ? intervalArr[ edgeIndex - 1 ] : minInterval;
+
+		/* save time of current edge */
+		prevTicks = currTicks;
+	}
+
+	edgeIndex++;
 }
 
 
@@ -422,7 +414,7 @@ int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_cod
 	ETS_GPIO_INTR_DISABLE();
 
 	/* Set a GPIO callback function */
-	ETS_GPIO_INTR_ATTACH( gpioCallback, NULL );
+//	ETS_GPIO_INTR_ATTACH( gpioCallback, NULL );
 
 	/* Trigger GPIO interrupt for rising and falling edges */
 	gpio_pin_intr_state_set( GPIO_ID_PIN(12), GPIO_PIN_INTR_ANYEDGE );
@@ -452,7 +444,7 @@ int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_cod
 	/* register callback function */
 	ETS_FRC_TIMER1_INTR_ATTACH( hwTimerCallback, NULL );
 
-	/* enable the GPIO and HW TIMER interrupts */
+	/* enable the HW TIMER interrupts */
 	TM1_EDGE_INT_ENABLE();
 	ETS_FRC1_INTR_ENABLE();
 
@@ -460,4 +452,9 @@ int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_cod
 	/* the timer is started inside the GPIO INT callback */
 
 	return 0;
+}
+
+call_me_on_gpio_edge_interrupt get_function_pointer( void )
+{
+	return &gpioEdgeTrigger;
 }
