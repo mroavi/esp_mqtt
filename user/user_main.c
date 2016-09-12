@@ -50,10 +50,98 @@
 #include "mem.h"
 #include "ir_receiver.h"
 
-static void ICACHE_FLASH_ATTR irCommandCb( uint32_t irCmd)
+static void ICACHE_FLASH_ATTR buttonPressedCb(button_t pressedButton, bool reapetedCode)
 {
-	/* print the received IR cmd */
-	INFO("\r\nIR CMD: %x", irCmd);
+	switch( pressedButton )
+	{
+	case CH_MIN:
+		INFO("CH-\r\n");
+		break;
+
+	case CH:
+		INFO("CH\r\n");
+		break;
+
+	case CH_PLUS:
+		INFO("CH+\r\n");
+		break;
+
+	case PREV:
+		INFO("PREV\r\n");
+		break;
+
+	case NEXT:
+		INFO("NEXT\r\n");
+		break;
+
+	case PLAY_PAUSE:
+		INFO("PLAY/PAUSE\r\n");
+		break;
+
+	case VOL_MIN:
+		INFO("VOL-\r\n");
+		break;
+
+	case VOL_PLUS:
+		INFO("VOL+\r\n");
+		break;
+
+	case EQ:
+		INFO("EQ\r\n");
+		break;
+
+	case NUM_0:
+		INFO("0\r\n");
+		break;
+
+	case NUM_100_PLUS:
+		INFO("100+\r\n");
+		break;
+
+	case NUM_200_PLUS:
+		INFO("200+\r\n");
+		break;
+
+	case NUM_1:
+		INFO("1\r\n");
+		break;
+
+	case NUM_2:
+		INFO("2\r\n");
+		break;
+
+	case NUM_3:
+		INFO("3\r\n");
+		break;
+
+	case NUM_4:
+		INFO("4\r\n");
+		break;
+
+	case NUM_5:
+		INFO("5\r\n");
+		break;
+
+	case NUM_6:
+		INFO("6\r\n");
+		break;
+
+	case NUM_7:
+		INFO("7\r\n");
+		break;
+
+	case NUM_8:
+		INFO("8\r\n");
+		break;
+
+	case NUM_9:
+		INFO("9\r\n");
+		break;
+
+	default:
+		INFO("Other button\r\n");
+	}
+
 	return;
 }
 
@@ -66,6 +154,7 @@ static void ICACHE_FLASH_ATTR wifiConnectCb(uint8_t status)
     MQTT_Disconnect(&mqttClient);
   }
 }
+
 static void ICACHE_FLASH_ATTR mqttConnectedCb(uint32_t *args)
 {
   MQTT_Client* client = (MQTT_Client*)args;
@@ -118,7 +207,6 @@ void ICACHE_FLASH_ATTR print_info()
   INFO("[INFO] -------------------------------------------\n");
   INFO("[INFO] Build time: %s\n", BUID_TIME);
   INFO("[INFO] -------------------------------------------\n");
-
 }
 
 
@@ -128,7 +216,7 @@ static void ICACHE_FLASH_ATTR app_init(void)
 
   print_info();
 
-  ir_receiver_init( irCommandCb );
+  ir_receiver_init( buttonPressedCb );
 
   MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
   MQTT_InitClient(&mqttClient, MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS, MQTT_KEEPALIVE, MQTT_CLEAN_SESSION);
@@ -140,6 +228,7 @@ static void ICACHE_FLASH_ATTR app_init(void)
 
   WIFI_Connect(STA_SSID, STA_PASS, wifiConnectCb);
 }
+
 void user_init(void)
 {
   system_init_done_cb(app_init);
