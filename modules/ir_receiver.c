@@ -5,23 +5,39 @@
  * NEC commands: https://arduino-info.wikispaces.com/IR-RemoteControl
  */
 
+//*****************************************************************************
+//
+// Include files
+//
+//*****************************************************************************
+
 #include "ir_receiver.h"
 #include "user_interface.h"
 #include "gpio.h"
 #include "osapi.h"
 
-void (*callback)( const char * pressed_button, bool repeated_code );
 
-static void 		hwTimerCallback( void );
-static void 		gpioEdgeTrigger(void *arg);
+//*****************************************************************************
+//
+// Constant definitions
+//
+//*****************************************************************************
 
-static void 		getIrRawMessageBits( void );
-static uint32_t 	getHexButtonCommand( void );
-static const char * getPressedButtonName( uint32_t hex );
+//*****************************************************************************
+//
+// Macros
+//
+//*****************************************************************************
 
-/* ====================================== */
-/* HARDWARE TIMER                         */
-/* ====================================== */
+//*****************************************************************************
+//
+// Type definitions
+//
+//*****************************************************************************
+
+//-----------------------------------------------------------------------------
+// HARDWARE TIMER
+//-----------------------------------------------------------------------------
 
 #define FRC1_ENABLE_TIMER  	BIT7
 #define FRC1_AUTO_LOAD  	BIT6
@@ -43,6 +59,13 @@ typedef enum {
     NMI_SOURCE = 1,
 } FRC1_TIMER_SOURCE_TYPE;
 
+//*****************************************************************************
+//
+// Static definitions
+//
+//*****************************************************************************
+
+static void (*callback)( const char * pressed_button, bool repeated_code );
 
 static uint32 	intervalArr[70] = {0};
 static uint32	edgeIndex = 0;
@@ -51,25 +74,42 @@ static uint32	edgeIndex = 0;
 static uint32	minInterval = 0xFFFFFFFF;
 
 /* this array will contain the raw IR message */
-static uint32 	rawIrMsg[200] = {0};
+static uint32 	rawIrMsg[200] = {0}; // TODO: calculate exactly how large this array has to be
 static uint32 	rawIrMsgLen = 0;
 
-/* assumes timer clk of 5MHz */
-static uint32 usToTicks( uint32_t us )
-{
-	return ( us * 10) >> 1;
-}
 
-/* assumes timer clk of 5MHz */
-static uint32 ticksToUs( uint32_t ticks )
-{
-	return ( ticks << 1 ) / 10;
-}
+//*****************************************************************************
+//
+// Extern data definitions
+//
+//*****************************************************************************
+
+//*****************************************************************************
+//
+// Local function prototypes
+//
+//*****************************************************************************
+
+static void 		hwTimerCallback( void );
+static void 		gpioEdgeTrigger(void *arg);
+
+static void 		getIrRawMessageBits( void );
+static uint32_t 	getHexButtonCommand( void );
+static const char * getPressedButtonName( uint32_t hex );
+
+static uint32	 	usToTicks( uint32_t us );
+static uint32 		ticksToUs( uint32_t ticks );
 
 
-/* ====================================== */
-/* GPIO INTERRPUT                         */
-/* ====================================== */
+//*****************************************************************************
+//
+// Local function implementations
+//
+//*****************************************************************************
+
+//-----------------------------------------------------------------------------
+// GPIO EDGE INTERRUPT
+//-----------------------------------------------------------------------------
 
 static void gpioEdgeTrigger(void *arg)
 {
@@ -93,9 +133,7 @@ static void gpioEdgeTrigger(void *arg)
 
 #if 0
 		os_printf("\n\nBeginning of IR message frame detected\r\n");
-#endif
 
-#if 0
 		// Set GPIO0 to HIGH
 		gpio_output_set( BIT0, 0, BIT0, 0 );
 #endif
@@ -119,9 +157,10 @@ static void gpioEdgeTrigger(void *arg)
 }
 
 
-/* ====================================== */
-/* HARDWARE TIMER                         */
-/* ====================================== */
+
+//-----------------------------------------------------------------------------
+// HARDWARE TIMER
+//-----------------------------------------------------------------------------
 
 /* The hardware timer is used to indicate when an IR message frame should have
  * arrived completely so that it can start processing it and extracting the IR command.
@@ -132,6 +171,18 @@ static void gpioEdgeTrigger(void *arg)
  * i.e. it should be larger than the duration of the longest possible message frame.
  * In the NEC IR transmission protocol all message frames have a duration of approximately 67.5ms.
  */
+
+/* assumes timer clk of 5MHz */
+static uint32 usToTicks( uint32_t us )
+{
+	return ( us * 10) >> 1;
+}
+
+/* assumes timer clk of 5MHz */
+static uint32 ticksToUs( uint32_t ticks )
+{
+	return ( ticks << 1 ) / 10;
+}
 
 static void hwTimerCallback( void )
 {
@@ -395,14 +446,21 @@ static const char * getPressedButtonName( uint32_t hex ) {
 
 
 
+
+//*****************************************************************************
+//
+// Extern function implementations
+//
+//*****************************************************************************
+
 int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_code ) )
 {
 	/* Register the callback */
 	callback = cb;
 
-	/* ====================================== */
-	/* GPIO INTERRPUT                         */
-	/* ====================================== */
+	//-----------------------------------------------------------------------------
+	// GPIO EDGE INTERRPUT
+	//-----------------------------------------------------------------------------
 
 	/* Set GPIO12 in GPIO mode */
 	PIN_FUNC_SELECT( PERIPHS_IO_MUX_MTDI_U, FUNC_GPIO12 );
@@ -423,9 +481,9 @@ int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_cod
 	ETS_GPIO_INTR_ENABLE();
 
 
-	/* ====================================== */
-	/* HARDWARE TIMER                         */
-	/* ====================================== */
+	//-----------------------------------------------------------------------------
+	// HARDWARE TIMER
+	//-----------------------------------------------------------------------------
 
 	/* The hardware timer is used to indicate when an IR message frame should have
 	 * arrived completely so that it can start processing it and extracting the IR command.
@@ -454,7 +512,17 @@ int ir_receiver_init( void (*cb)( const char * pressed_button, bool repeated_cod
 	return 0;
 }
 
+/*
+ * Example of how to return a function pointer:
+ * 	- http://www.newty.de/fpt/fpt.html
+ */
 call_me_on_gpio_edge_interrupt get_function_pointer( void )
 {
 	return &gpioEdgeTrigger;
 }
+
+//*****************************************************************************
+//
+// End of file
+//
+//*****************************************************************************

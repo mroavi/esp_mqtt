@@ -1,11 +1,13 @@
-/* Philips IoT */
+/* IoT
+ *
+ */
 
 /*
  * SENSORS USED:
- * 	- TSOP4038 	- IR Receiver Module
- * 	- INMP401 	- SparkFun MEMS Microphone Breakout
- *  - HC-SR501 	- PIR MOTION DETECTOR
- *  - AS6200	- Temperature sensor
+ * 	- TSOP4038 	- IR Receiver Module (https://learn.adafruit.com/ir-sensor)
+ * 	- INMP401 	- SparkFun MEMS Microphone Breakout (https://www.sparkfun.com/products/9868)
+ *  - HC-SR501 	- PIR MOTION DETECTOR (https://learn.adafruit.com/pir-passive-infrared-proximity-motion-sensor/overview)
+ *  - AS6200	- Temperature sensor (http://ams.com/eng/Products/Environmental-Sensors/Temperature-Sensors/AS6200)
  */
 
 /*
@@ -13,6 +15,8 @@
  *
  * ERROR: '.irom0.text' will not fit in region `irom0_0_seg'
  * http://bbs.espressif.com/viewtopic.php?f=7&t=1339
+ *
+ * ANSWER:
  * Howdy, have you tried modifying the eagle.app.v6.ld linker control configuration
  * file and lowering the start location of irom0_0_seg and increasing its length.
  * The default on an Espressif SDK system is only 245,000 bytes out of the possible 512,000.
@@ -77,7 +81,7 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 /*
  *
  */
-static void ICACHE_FLASH_ATTR wifiConnectCb(uint8_t status)
+static void ICACHE_FLASH_ATTR wifiConnectCb(uint8_t status);
 
 /*
  * MQTT Callbacks
@@ -269,9 +273,11 @@ static void ICACHE_FLASH_ATTR app_init(void)
 
 	ir_receiver_init( buttonPressedCb );
 
-	/* ====================================== */
-	/* ADC TIMER (based on software timer)	  */
-	/* ====================================== */
+	//*****************************************************************************
+	//
+	// ADC TIMER (based on software timer)
+	//
+	//*****************************************************************************
 
 	/* disarm timer */
 	os_timer_disarm((ETSTimer*)&readAdc);
@@ -282,9 +288,12 @@ static void ICACHE_FLASH_ATTR app_init(void)
 	/* arm the timer -> os_timer_arm(<pointer>, <period in ms>, <fire periodically>) */
 	os_timer_arm((ETSTimer*)&readAdc, 10, 1);
 
-	/* ====================================== */
-	/* PIR MOTION DETECTOR (based on GPIO edge interrupt */
-	/* ====================================== */
+
+	//*****************************************************************************
+	//
+	// PIR MOTION DETECTOR (based on GPIO edge interrupt
+	//
+	//*****************************************************************************
 
 	/* Set GPIO in GPIO mode */
 	PIN_FUNC_SELECT( PERIPHS_IO_MUX_MTDO_U, FUNC_GPIO15 );
@@ -306,9 +315,12 @@ static void ICACHE_FLASH_ATTR app_init(void)
 	/* Enable GPIO interrupts */
 	ETS_GPIO_INTR_ENABLE();
 
-	/* ====================================== */
-	/* MQTT                         		  */
-	/* ====================================== */
+
+	//*****************************************************************************
+	//
+	// MQTT CLIENT
+	//
+	//*****************************************************************************
 
 	MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, DEFAULT_SECURITY);
 	MQTT_InitClient(&mqttClient, MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS, MQTT_KEEPALIVE, MQTT_CLEAN_SESSION);
@@ -318,9 +330,12 @@ static void ICACHE_FLASH_ATTR app_init(void)
 	MQTT_OnPublished(&mqttClient, mqttPublishedCb);
 	MQTT_OnData(&mqttClient, mqttDataCb);
 
-	/* ====================================== */
-	/* WiFi                         		  */
-	/* ====================================== */
+
+	//*****************************************************************************
+	//
+	// WiFi STATION MODE
+	//
+	//*****************************************************************************
 
 	WIFI_Connect(STA_SSID, STA_PASS, wifiConnectCb);
 }
