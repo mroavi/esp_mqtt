@@ -54,7 +54,7 @@ char soundSubtopic[] 		= "/sound";
 char temperatureSubtopic[] 	= "/temperature";
 char motionSubtopic[] 		= "/motion";
 char distanceSubtopic[]		= "/distance";
-char irReceiver[]			= "/ir_receiver";
+char irReceiverSubtopic[]	= "/ir_receiver";
 
 /*
  * This software timer controls the frequency
@@ -166,7 +166,7 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 	ptr = strchr( mqttTopic, '/');
 
 	/* Overwrite what follows the first '/' with topic substring */
-	os_strcpy(ptr, irReceiver);
+	os_strcpy(ptr, irReceiverSubtopic);
 
 #if 0
 		os_printf("mqttTopic starting address: %d\r\n", mqttTopic);
@@ -174,9 +174,15 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 		os_printf("Resulting MQTT topic string: %s\r\n", mqttTopic);
 #endif
 
+	/* Copy message to the message buffer (terminating NULL included) */
+	os_sprintf(mqttMessage, "Button pressed: %s", pressedButton);
+
 	/* Publish the MQTT message */
-	MQTT_Publish(&mqttClient, mqttTopic, pressedButton, pressedButtonLen, mqttQoS, mqttRetain);
-	INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", mqttTopic, pressedButton, pressedButtonLen );
+	MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
+
+#if 1
+		os_printf("Button pressed: %s", pressedButton);
+#endif
 
 	//-----------------------------------------------------------------------------
 	// Temperature
