@@ -29,7 +29,7 @@ ESP_SIZE = 4m
 
 
 VERBOSE = yes
-FLAVOR = debug
+FLAVOR = release
 # name for the target project
 TARGET		?= iot-esp
 
@@ -91,19 +91,19 @@ TARGET_OUT	:= $(addprefix $(BUILD_BASE)/,$(TARGET).out)
 
 
 # compiler flags using during compilation of source files
-CFLAGS		= -g			\
-						-Wpointer-arith		\
-						-Wundef			\
-						-Wl,-EL			\
-						-fno-inline-functions	\
-						-nostdlib       \
-						-mlongcalls	\
-						-mtext-section-literals \
-						-ffunction-sections \
-						-fdata-sections	\
-						-fno-builtin-printf\
-						-DICACHE_FLASH \
-						-DBUID_TIME=\"$(DATETIME)\"
+CFLAGS		= 	-g -O1			\
+				-Wpointer-arith		\
+				-Wundef			\
+				-Wl,-EL			\
+				-fno-inline-functions	\
+				-nostdlib       \
+				-mlongcalls	\
+				-mtext-section-literals \
+				-ffunction-sections \
+				-fdata-sections	\
+				-fno-builtin-printf\
+				-DICACHE_FLASH \
+				-DBUID_TIME=\"$(DATETIME)\"
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static

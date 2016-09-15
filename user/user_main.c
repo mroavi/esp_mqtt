@@ -33,8 +33,28 @@
 #include "user_interface.h"
 #include "mem.h"
 #include "ir_receiver.h"
+#include "temp_sensor_as6200.h"
 
 MQTT_Client mqttClient;
+
+/* MQTT QoS */
+int mqttQoS = 2;
+
+/* MQTT retain */
+int mqttRetain = 0;
+
+/* Buffer that stores the MQTT message (payload) */
+char mqttMessage[50] = "";
+
+/* Buffer that stores the MQTT topic string */
+char mqttTopic[50] = MQTT_CLIENT_ID"/";
+
+/* List of MQTT subtopics in use */
+char volumeSubtopic[] 		= "/volume";
+char temperatureSubtopic[] 	= "/temperature";
+char motionSubtopic[] 		= "/motion";
+char distanceSubtopic[]		= "/distance";
+char irReceiver[]			= "/ir_receiver";
 
 /*
  * This software timer controls the frequency
@@ -128,15 +148,81 @@ static void gpioCallback(void *arg)
 }
 
 
+
 static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool reapetedCode)
 {
-	char topic[] = MQTT_CLIENT_ID"/ir_commands";
+	char * ptr;
 
-	int pressedButtonLen = strlen(pressedButton);
+	int pressedButtonLen = os_strlen(pressedButton);
+	float temperature;
+	int volume;
 
-	INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", topic, pressedButton, pressedButtonLen );
+#if 1
+		os_printf("Initial MQTT topic string: %s\r\n", mqttTopic);
+#endif
 
-	MQTT_Publish(&mqttClient, topic, pressedButton, pressedButtonLen, 1, 0);
+	/* Locate first slash '/' in MQTT topic string */
+	ptr = strchr( mqttTopic, '/');
+
+	/* Overwrite what follows the first '/' with topic substring */
+	os_strcpy(ptr, irReceiver);
+
+#if 0
+		os_printf("mqttTopic starting address: %d\r\n", mqttTopic);
+		os_printf("mqttTopic first '/' address: %d\r\n", ptr);
+		os_printf("Resulting MQTT topic string: %s\r\n", mqttTopic);
+#endif
+
+	/* Publish the MQTT message */
+	MQTT_Publish(&mqttClient, mqttTopic, pressedButton, pressedButtonLen, mqttQoS, mqttRetain);
+	INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", mqttTopic, pressedButton, pressedButtonLen );
+
+	//-----------------------------------------------------------------------------
+	// Temperature
+	//-----------------------------------------------------------------------------
+	if ( !os_strcmp(pressedButton, "1") )
+	{
+		temperature = as6200_read_temperature();
+
+		/* Locate the first slash '/' in MQTT topic string */
+		ptr = strchr( mqttTopic, '/');
+
+		/* Overwrite from '/' onwards with the topic substring */
+		os_strcpy(ptr, temperatureSubtopic);
+
+		/* Copy message to the message buffer (terminating NULL included) */
+		os_sprintf(mqttMessage, "%d", (int)temperature);
+
+		/* Publish the MQTT message */
+		MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
+
+#if 1
+		os_printf("Temperature: %d\r\n", (int)temperature);
+#endif
+	}
+	//-----------------------------------------------------------------------------
+	// Volume
+	//-----------------------------------------------------------------------------
+	else if ( !os_strcmp(pressedButton, "2") )
+	{
+		volume = system_adc_read();
+
+		/* Locate the first slash '/' in MQTT topic string */
+		ptr = strchr( mqttTopic, '/');
+
+		/* Overwrite from '/' onwards with the topic substring */
+		os_strcpy(ptr, volumeSubtopic);
+
+		/* Copy message to the message buffer (terminating NULL included) */
+		os_sprintf(mqttMessage, "%d (ADC reading)", volume);
+
+		/* Publish the MQTT message */
+		MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
+
+#if 1
+		os_printf("Volume: %d\r\n", volume);
+#endif
+	}
 
 	return;
 }
@@ -182,7 +268,7 @@ void readAdcTimerCallback(void *arg)
 
 		INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", topic, message, messageLen );
 
-		MQTT_Publish(&mqttClient, topic, message, messageLen, 1, 0);
+		MQTT_Publish(&mqttClient, topic, message, messageLen, mqttQoS, mqttRetain);
 	}
 }
 
@@ -190,12 +276,21 @@ void readAdcTimerCallback(void *arg)
 static void motionDetected(void *arg)
 {
 	uint16 gpio_status = 0;
-	char topic[] = MQTT_CLIENT_ID"/motion";
-	char message[] = "Motion detected";
+	char * ptr;
 
-	INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", topic, message, sizeof(message) );
+	/* Locate the first slash '/' in MQTT topic string */
+	ptr = strchr( mqttTopic, '/');
 
-	MQTT_Publish(&mqttClient, topic, message, sizeof(message), 1, 0);
+	/* Overwrite from '/' onwards with the topic substring */
+	os_strcpy(ptr, motionSubtopic);
+
+	/* Copy message to the message buffer (terminating NULL included) */
+	os_sprintf(mqttMessage, "Motion detected");
+
+	/* Publish the MQTT message */
+	MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
+
+	INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", mqttTopic, mqttMessage, os_strlen(mqttMessage) );
 }
 
 
@@ -291,7 +386,7 @@ static void ICACHE_FLASH_ATTR app_init(void)
 
 	//*****************************************************************************
 	//
-	// PIR MOTION DETECTOR (based on GPIO edge interrupt
+	// PIR MOTION DETECTOR (based on GPIO edge interrupt)
 	//
 	//*****************************************************************************
 
@@ -303,18 +398,27 @@ static void ICACHE_FLASH_ATTR app_init(void)
 
 	gpioEdgeInterrupt = get_function_pointer();
 
-//	/* Disable all GPIO interrupts */
-//	ETS_GPIO_INTR_DISABLE();
+	/* Disable all GPIO interrupts */
+	ETS_GPIO_INTR_DISABLE();
 
 	/* Set a GPIO callback function */
 	ETS_GPIO_INTR_ATTACH( gpioCallback, NULL );
 
-//	/* Trigger GPIO interrupt on rising edge */
+	/* Trigger GPIO interrupt on rising edge */
 	gpio_pin_intr_state_set( GPIO_ID_PIN(15), GPIO_PIN_INTR_POSEDGE );
 
 	/* Enable GPIO interrupts */
 	ETS_GPIO_INTR_ENABLE();
 
+
+	//*****************************************************************************
+	//
+	// TEMPERATURE SENSOR (uses i2c)
+	// https://esp8266hints.wordpress.com/2015/06/04/sdk-i2c-code-todays-duh-story/
+	//*****************************************************************************
+
+	as6200_init();
+	as6200_config( 0x4060);
 
 	//*****************************************************************************
 	//
