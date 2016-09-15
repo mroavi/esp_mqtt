@@ -437,7 +437,8 @@ static const char * getPressedButtonName( uint32_t hex ) {
 		break;
 
 	default:
-		pressedButton = button[21];
+//		pressedButton = button[21];
+		pressedButton = "";
 		break;
 	}
 

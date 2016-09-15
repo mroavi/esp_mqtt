@@ -50,7 +50,7 @@ char mqttMessage[50] = "";
 char mqttTopic[50] = MQTT_CLIENT_ID"/";
 
 /* List of MQTT subtopics in use */
-char volumeSubtopic[] 		= "/volume";
+char soundSubtopic[] 		= "/sound";
 char temperatureSubtopic[] 	= "/temperature";
 char motionSubtopic[] 		= "/motion";
 char distanceSubtopic[]		= "/distance";
@@ -154,8 +154,9 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 	char * ptr;
 
 	int pressedButtonLen = os_strlen(pressedButton);
-	float temperature;
-	int volume;
+	float temperature;	// in Celsius
+	int volume; 		// 10 bit resolution
+	uint32 motion; 		// 0 -> NO ; 1 -> YES
 
 #if 1
 		os_printf("Initial MQTT topic string: %s\r\n", mqttTopic);
@@ -191,7 +192,7 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 		os_strcpy(ptr, temperatureSubtopic);
 
 		/* Copy message to the message buffer (terminating NULL included) */
-		os_sprintf(mqttMessage, "%d", (int)temperature);
+		os_sprintf(mqttMessage, "Temperature: %d degrees Celsius", (int)temperature);
 
 		/* Publish the MQTT message */
 		MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
@@ -201,7 +202,7 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 #endif
 	}
 	//-----------------------------------------------------------------------------
-	// Volume
+	// Sound
 	//-----------------------------------------------------------------------------
 	else if ( !os_strcmp(pressedButton, "2") )
 	{
@@ -211,18 +212,42 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 		ptr = strchr( mqttTopic, '/');
 
 		/* Overwrite from '/' onwards with the topic substring */
-		os_strcpy(ptr, volumeSubtopic);
+		os_strcpy(ptr, soundSubtopic);
 
 		/* Copy message to the message buffer (terminating NULL included) */
-		os_sprintf(mqttMessage, "%d (ADC reading)", volume);
+		os_sprintf(mqttMessage, "Sound volume: %d (ADC reading)", volume);
 
 		/* Publish the MQTT message */
 		MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
 
 #if 1
-		os_printf("Volume: %d\r\n", volume);
+		os_printf("Sound volume: %d\r\n", volume);
 #endif
 	}
+	//-----------------------------------------------------------------------------
+	// Motion
+	//-----------------------------------------------------------------------------
+	else if ( !os_strcmp(pressedButton, "3") )
+	{
+		motion = ( gpio_input_get() & ( (1 << GPIO_ID_PIN(15)) )  ) != 0;
+
+		/* Locate the first slash '/' in MQTT topic string */
+		ptr = strchr( mqttTopic, '/');
+
+		/* Overwrite from '/' onwards with the topic substring */
+		os_strcpy(ptr, motionSubtopic);
+
+		/* Copy message to the message buffer (terminating NULL included) */
+		os_sprintf(mqttMessage, "Motion: %d", motion);
+
+		/* Publish the MQTT message */
+		MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
+
+#if 1
+		os_printf("Motion: %d\r\n", motion);
+#endif
+	}
+
 
 	return;
 }
@@ -230,10 +255,7 @@ static void ICACHE_FLASH_ATTR buttonPressedCb( const char * pressedButton, bool 
 
 void readAdcTimerCallback(void *arg)
 {
-	char topic[] = MQTT_CLIENT_ID"/sound";
-	char message[10];
-	int messageLen;
-
+	char * ptr;
 	uint16 i;
 
 	/* Current ADC value (volume level of the most recent ADC measurement)*/
@@ -264,18 +286,29 @@ void readAdcTimerCallback(void *arg)
 
 		//TODO: send date and time
 
-		messageLen = os_sprintf(message, "%d", abs_val_diff);
+		/* Locate the first slash '/' in MQTT topic string */
+		ptr = strchr( mqttTopic, '/');
+
+		/* Overwrite from '/' onwards with the topic substring */
+		os_strcpy(ptr, soundSubtopic);
+
+		/* Copy message to the message buffer (terminating NULL included) */
+		os_sprintf(mqttMessage, "Sound volume change: %d (ADC reading)", abs_val_diff);
+
+		/* Publish the MQTT message */
+		MQTT_Publish(&mqttClient, mqttTopic, mqttMessage, os_strlen(mqttMessage), mqttQoS, mqttRetain);
+
+#if 1
+		os_printf("Sound volume change: %d\r\n", abs_val_diff);
+#endif
 
 		INFO("MQTT: Publish topic: %s, data: %s, data length: %d\r\n", topic, message, messageLen );
-
-		MQTT_Publish(&mqttClient, topic, message, messageLen, mqttQoS, mqttRetain);
 	}
 }
 
 
 static void motionDetected(void *arg)
 {
-	uint16 gpio_status = 0;
 	char * ptr;
 
 	/* Locate the first slash '/' in MQTT topic string */
