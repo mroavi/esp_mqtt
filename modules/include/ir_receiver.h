@@ -26,7 +26,7 @@ static const char *button[] =
 	"7",
 	"8",
 	"9",
-	"OTHER"
+	"UNKNOWN"
 };
 
 typedef void (*call_me_on_gpio_edge_interrupt)(void * arg);

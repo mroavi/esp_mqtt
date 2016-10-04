@@ -77,6 +77,9 @@ static uint32	minInterval = 0xFFFFFFFF;
 static uint32 	rawIrMsg[200] = {0}; // TODO: calculate exactly how large this array has to be
 static uint32 	rawIrMsgLen = 0;
 
+/* used to inform if the IR message contains a repeated code */
+bool repeatCode;
+
 
 //*****************************************************************************
 //
@@ -216,7 +219,7 @@ static void hwTimerCallback( void )
 	/* reset index */
 	edgeIndex = 0;
 
-	callback( pressedButton, false ); // TODO: implement repeated code functionality
+	callback( pressedButton, repeatCode );
 
 	return;
 }
@@ -275,7 +278,6 @@ static void getIrRawMessageBits( void )
 static uint32_t getHexButtonCommand( void )
 {
 	int i, j;
-	bool repeatCode = false;
 
 	/* this variable will contain the decoded IR command */
 	static uint32 	irCmd = 0;
@@ -303,6 +305,10 @@ static uint32_t getHexButtonCommand( void )
 		os_printf( "REPEATED CODE\r\n");
 #endif
 		repeatCode = true;
+	}
+	else
+	{
+		repeatCode = false;
 	}
 
 	/* decode raw message only if it is not a repeat code */
@@ -437,8 +443,7 @@ static const char * getPressedButtonName( uint32_t hex ) {
 		break;
 
 	default:
-//		pressedButton = button[21];
-		pressedButton = "";
+		pressedButton = button[21];
 		break;
 	}
 
