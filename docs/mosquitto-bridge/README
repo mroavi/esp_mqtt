@@ -1,0 +1,10 @@
+'bridge.conf' configures the MQTT mosquitto broker to bridge devices that
+do not support TLS 1.2 with AWS.
+
+The complete set of instructions can be found in:
+https://aws.amazon.com/blogs/iot/how-to-bridge-mosquitto-mqtt-broker-to-aws-iot/
+
+'bridge.conf' should be stored in this location:
+/etc/mosquitto/conf.d/bridge.conf
+
+Note that the bridged devices should use the MQTT topics stated in this file. 
